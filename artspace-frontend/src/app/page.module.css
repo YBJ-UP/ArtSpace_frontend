@@ -1,0 +1,57 @@
+.container {
+  position: relative;
+  min-height: 100vh;
+  background-color: #f9fafb;
+  overflow: hidden;
+  color: #111827;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes float {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+  filter: blur(120px);
+  opacity: 0.6;
+}
+
+.bubblePurple { top: -10%; left: -5%; width: 500px; height: 500px; background-color: #a855f7; animation: float 12s ease-in-out infinite; }
+.bubbleCyan { top: 10%; right: -10%; width: 600px; height: 600px; background-color: #06b6d4; animation: float 15s ease-in-out infinite reverse; }
+.bubbleBlue { bottom: -10%; left: 20%; width: 500px; height: 500px; background-color: #3b82f6; animation: float 10s ease-in-out infinite; }
+.bubblePink { bottom: 20%; right: 10%; width: 400px; height: 400px; background-color: #ec4899; opacity: 0.5; animation: float 14s ease-in-out infinite reverse; }
+
+.glassHero {
+  background-color: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border-radius: 3rem;
+}
+
+.glassFeature {
+  background-color: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.glassFeature:hover {
+  background-color: rgba(255, 255, 255, 0.7);
+  transform: translateY(-8px);
+}
+
+.glassFooter {
+  background-color: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}

@@ -12,12 +12,19 @@ export default function DetalleObraPage() {
   const [obra, setObra] = useState<any>(null);
   const [comentarios, setComentarios] = useState<any[]>([]);
   const [nuevoComentario, setNuevoComentario] = useState('');
+  const [liked, setLiked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [comentando, setComentando] = useState(false);
+  const [usuarioActual, setUsuarioActual] = useState<any>(null);
+
+  useEffect(() => {
+    const user = localStorage.getItem('user');
+    if (user) setUsuarioActual(JSON.parse(user));
+  }, []);
 
   useEffect(() => {
     const fetchDetalles = async () => {
       try {
-        // Obtenemos los detalles de la obra que ya incluyen los comentarios
         const resObra = await api.get(`/obras/${idObra}`);
         setObra(resObra.data);
         setComentarios(resObra.data.comentarios || []);
@@ -27,111 +34,205 @@ export default function DetalleObraPage() {
         setLoading(false);
       }
     };
-
     if (idObra) fetchDetalles();
   }, [idObra]);
 
   const handleLike = async () => {
     try {
-      // Endpoint para dar/quitar like
       const res = await api.post(`/obras/${idObra}/likes`);
-      // Actualizamos el contador de likes localmente (asumiendo que el backend devuelve un mensaje de éxito)
-      setObra({ 
-        ...obra, 
-        likes: res.data.mensaje.includes('agregado') ? obra.likes + 1 : Math.max(0, obra.likes - 1) 
-      });
+      setLiked(!liked);
+      setObra((prev: any) => ({ ...prev, likes: res.data.likes_total ?? prev.likes }));
     } catch (error) {
       console.error('Error al dar like', error);
     }
   };
 
-  const handleComentar = async (e: React.FormEvent) => {
+  const handleComentar = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!nuevoComentario.trim()) return;
-
+    setComentando(true);
     try {
       await api.post(`/obras/${idObra}/comentarios`, { contenido: nuevoComentario });
       setNuevoComentario('');
-      // Recargar obra para obtener los nuevos comentarios
       const resObra = await api.get(`/obras/${idObra}`);
       setComentarios(resObra.data.comentarios || []);
     } catch (error) {
       console.error('Error al publicar comentario', error);
+    } finally {
+      setComentando(false);
     }
   };
 
-  if (loading) return <div className="text-center py-10">Cargando obra...</div>;
-  if (!obra) return <div className="text-center py-10">Obra no encontrada</div>;
-
-  const getImageUrl = (url: string) => {
-    if (!url) return 'https://via.placeholder.com/800x600?text=Sin+Imagen';
-    if (url.startsWith('http')) return url;
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://artspacebackend-production.up.railway.app';
-    return `${baseUrl}${url.startsWith('/') ? url : '/' + url}`;
+  const handleEliminarComentario = async (idComentario: number) => {
+    if (!confirm('¿Eliminar este comentario?')) return;
+    try {
+      await api.delete(`/comentarios/${idComentario}`);
+      setComentarios((prev) => prev.filter((c) => c.id_comentario !== idComentario));
+    } catch (error) {
+      console.error('Error al eliminar comentario', error);
+    }
   };
 
+  const getImageUrl = (url: string) => {
+    if (!url) return 'https://placehold.co/800x600?text=Sin+Imagen';
+    if (url.startsWith('http')) return url;
+    const base = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://artspacebackend-production.up.railway.app';
+    return `${base}${url.startsWith('/') ? url : '/' + url}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto py-10 px-4 animate-pulse space-y-4">
+        <div className="h-96 bg-gray-200 rounded-xl" />
+        <div className="h-8 bg-gray-200 rounded w-1/2" />
+        <div className="h-4 bg-gray-200 rounded w-1/3" />
+      </div>
+    );
+  }
+
+  if (!obra) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 text-center text-gray-500">
+        <p className="text-5xl mb-4">🖼️</p>
+        <p className="text-xl font-semibold">Obra no encontrada</p>
+      </div>
+    );
+  }
+
+  const esAutor = usuarioActual?.id_usuario === obra.id_usuario;
+
   return (
-    <div className="max-w-4xl mx-auto py-8">
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        {/* Imagen en grande */}
-        <div className="bg-gray-100 flex justify-center">
-          <img 
-            src={getImageUrl(obra.imagen || obra.archivo)} 
-            alt={obra.titulo} 
-            className="max-h-[70vh] object-contain w-full"
+    <div className="max-w-4xl mx-auto py-8 px-4">
+      <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+
+        {/* Imagen principal */}
+        <div className="bg-gray-950 flex justify-center max-h-[75vh] overflow-hidden">
+          <img
+            src={getImageUrl(obra.imagen || obra.archivo)}
+            alt={obra.titulo}
+            className="max-h-[75vh] object-contain w-full"
           />
         </div>
 
-        <div className="p-6">
-          <div className="flex justify-between items-start mb-4">
+        <div className="p-6 md:p-8">
+
+          {/* Encabezado: título, autor, acciones */}
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold">{obra.titulo}</h1>
-              <p className="text-gray-600 mt-1">
-                Por <Link href={`/usuario/${obra.id_usuario}`} className="font-bold text-black hover:underline">{obra.autor}</Link> • {obra.categoria}
+              <h1 className="text-3xl font-bold text-gray-900 mb-1">{obra.titulo}</h1>
+              <p className="text-gray-500 text-sm">
+                Por{' '}
+                <Link href={`/usuario/${obra.id_usuario}`} className="font-semibold text-gray-800 hover:underline">
+                  {obra.autor}
+                </Link>
+                {obra.categoria && (
+                  <>
+                    {' '}·{' '}
+                    <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">{obra.categoria}</span>
+                  </>
+                )}
               </p>
             </div>
-            <button 
-              onClick={handleLike}
-              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full font-semibold transition"
-            >
-              ❤️ <span>{obra.likes} Likes</span>
-            </button>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {esAutor && (
+                <Link
+                  href={`/obras/${obra.id_obra}/editar`}
+                  className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition font-medium"
+                >
+                  Editar
+                </Link>
+              )}
+              <button
+                onClick={handleLike}
+                className={`flex items-center gap-2 px-5 py-2 rounded-lg font-semibold text-sm transition border ${
+                  liked
+                    ? 'bg-rose-50 border-rose-300 text-rose-600 hover:bg-rose-100'
+                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {liked ? '❤️' : '🤍'}
+                <span>{obra.likes}</span>
+              </button>
+            </div>
           </div>
 
-          <p className="text-gray-800 whitespace-pre-wrap mb-8">{obra.descripcion}</p>
+          {/* Descripción */}
+          {obra.descripcion && (
+            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap mb-8">{obra.descripcion}</p>
+          )}
 
-          <hr className="mb-8" />
+          <hr className="border-gray-100 mb-8" />
 
-          {/* Sección de Comentarios */}
+          {/* Sección de comentarios */}
           <div>
-            <h3 className="text-xl font-bold mb-4">Comentarios ({comentarios.length})</h3>
-            
-            <form onSubmit={handleComentar} className="mb-6 flex gap-2">
-              <input 
-                type="text" 
-                placeholder="Escribe un comentario..." 
-                className="flex-1 border border-gray-300 p-2 rounded-lg"
+            <h3 className="text-lg font-bold text-gray-900 mb-5">
+              Comentarios <span className="text-gray-400 font-normal">({comentarios.length})</span>
+            </h3>
+
+            {/* Formulario nuevo comentario */}
+            <form onSubmit={handleComentar} className="flex gap-3 mb-8">
+              <input
+                type="text"
+                placeholder="Escribe un comentario..."
+                className="flex-1 border border-gray-200 bg-gray-50 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition"
                 value={nuevoComentario}
                 onChange={(e) => setNuevoComentario(e.target.value)}
+                disabled={comentando}
               />
-              <button type="submit" className="bg-black text-white px-4 py-2 rounded-lg font-bold">
-                Publicar
+              <button
+                type="submit"
+                disabled={comentando || !nuevoComentario.trim()}
+                className="bg-black text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {comentando ? '...' : 'Publicar'}
               </button>
             </form>
 
-            <div className="space-y-4">
-              {comentarios.map((comentario: any) => (
-                <div key={comentario.id_comentario} className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex justify-between mb-1">
-                    <span className="font-bold text-sm">{comentario.autor}</span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(comentario.fecha_comentario).toLocaleDateString()}
-                    </span>
+            {/* Lista de comentarios */}
+            {comentarios.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <p className="text-3xl mb-2">💬</p>
+                <p className="text-sm">Sé el primero en comentar</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {comentarios.map((comentario: any) => (
+                  <div
+                    key={comentario.id_comentario}
+                    className="group flex gap-3 bg-gray-50 hover:bg-gray-100 transition rounded-xl p-4"
+                  >
+                    <img
+                      src={comentario.autor_avatar || 'https://placehold.co/40x40?text=U'}
+                      alt={comentario.autor}
+                      className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="font-semibold text-sm text-gray-900">{comentario.autor}</span>
+                        <span className="text-xs text-gray-400 shrink-0">
+                          {new Date(comentario.fecha_comentario).toLocaleDateString('es-MX', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700 mt-0.5 leading-relaxed">{comentario.contenido}</p>
+                    </div>
+                    {usuarioActual?.id_usuario === comentario.id_usuario && (
+                      <button
+                        onClick={() => handleEliminarComentario(comentario.id_comentario)}
+                        className="opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-rose-500 shrink-0 self-start mt-0.5 text-sm"
+                        title="Eliminar comentario"
+                      >
+                        🗑️
+                      </button>
+                    )}
                   </div>
-                  <p className="text-sm text-gray-700">{comentario.contenido}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

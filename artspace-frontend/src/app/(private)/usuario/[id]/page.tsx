@@ -10,15 +10,17 @@ export default function PerfilUsuarioPage() {
   const [perfil, setPerfil] = useState<any>(null);
   const [obras, setObras] = useState<any[]>([]);
   const [siguiendo, setSiguiendo] = useState(false);
+  const [loadingFollow, setLoadingFollow] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchDatos = async () => {
     try {
-      const resPerfil = await api.get(`/perfil/${id}`);
+      const [resPerfil, resObras] = await Promise.all([
+        api.get(`/usuarios/${id}`),
+        api.get(`/obras/usuario/${id}`),
+      ]);
       setPerfil(resPerfil.data);
-      setSiguiendo(resPerfil.data.siguiendo); // El backend debe indicar si ya lo sigues
-
-      const resObras = await api.get(`/obras/usuario/${id}`);
+      setSiguiendo(resPerfil.data.siguiendo ?? false);
       setObras(resObras.data);
     } catch (error) {
       console.error(error);
@@ -30,49 +32,138 @@ export default function PerfilUsuarioPage() {
   useEffect(() => { fetchDatos(); }, [id]);
 
   const handleFollow = async () => {
+    setLoadingFollow(true);
     try {
-      await api.post(`/seguidores/${id}`);
-      setSiguiendo(!siguiendo);
-      // Opcional: Recargar para actualizar contador de seguidores
-      const res = await api.get(`/perfil/${id}`);
+      if (siguiendo) {
+        await api.delete(`/seguidores/${id}/seguir`);
+        setSiguiendo(false);
+      } else {
+        await api.post(`/seguidores/${id}/seguir`);
+        setSiguiendo(true);
+      }
+      const res = await api.get(`/usuarios/${id}`);
       setPerfil(res.data);
     } catch (error) {
       console.error('Error al seguir/dejar de seguir', error);
+    } finally {
+      setLoadingFollow(false);
     }
   };
 
-  if (loading) return <div className="text-center py-10">Cargando perfil...</div>;
+  const getImageUrl = (url: string) => {
+    if (!url) return 'https://placehold.co/800x600?text=Sin+Imagen';
+    if (url.startsWith('http')) return url;
+    const base = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://artspacebackend-production.up.railway.app';
+    return `${base}${url.startsWith('/') ? url : '/' + url}`;
+  };
 
-  return (
-    <div className="max-w-5xl mx-auto py-8">
-      <div className="bg-white p-8 rounded-xl shadow-sm border mb-8 flex flex-col md:flex-row items-center gap-6">
-        <img src={perfil.avatar || 'https://via.placeholder.com/150'} className="w-32 h-32 rounded-full object-cover" />
-        <div className="flex-1 text-center md:text-left">
-          <h1 className="text-3xl font-bold">{perfil.nombre}</h1>
-          <p className="text-gray-700 mt-2">{perfil.biografia || 'Sin biografía.'}</p>
-          <div className="flex gap-6 mt-4 justify-center md:justify-start">
-            <span><strong>{obras.length}</strong> Obras</span>
-            <span><strong>{perfil.seguidores}</strong> Seguidores</span>
-            <span><strong>{perfil.seguidos}</strong> Seguidos</span>
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto py-10 px-4 animate-pulse space-y-6">
+        <div className="bg-white rounded-2xl p-8 flex gap-6 border shadow-sm">
+          <div className="w-28 h-28 rounded-full bg-gray-200 shrink-0" />
+          <div className="flex-1 space-y-3 pt-2">
+            <div className="h-7 bg-gray-200 rounded w-48" />
+            <div className="h-4 bg-gray-200 rounded w-72" />
+            <div className="flex gap-6 mt-4">
+              <div className="h-4 bg-gray-200 rounded w-16" />
+              <div className="h-4 bg-gray-200 rounded w-16" />
+              <div className="h-4 bg-gray-200 rounded w-16" />
+            </div>
           </div>
         </div>
-        <button 
+        <div className="grid grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => <div key={i} className="h-56 bg-gray-200 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (!perfil) {
+    return (
+      <div className="max-w-5xl mx-auto py-20 text-center text-gray-500">
+        <p className="text-5xl mb-4">👤</p>
+        <p className="text-xl font-semibold">Usuario no encontrado</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto py-8 px-4 space-y-8">
+
+      {/* Tarjeta de perfil */}
+      <div className="bg-white rounded-2xl shadow-sm border p-6 md:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6">
+        <img
+          src={perfil.avatar || 'https://placehold.co/150x150?text=U'}
+          alt={perfil.nombre}
+          className="w-28 h-28 rounded-full object-cover border-2 border-gray-100 shrink-0"
+        />
+
+        <div className="flex-1 text-center sm:text-left">
+          <h1 className="text-2xl font-bold text-gray-900">{perfil.nombre}</h1>
+          <p className="text-gray-500 mt-1 text-sm leading-relaxed max-w-md">
+            {perfil.biografia || 'Este artista aún no tiene biografía.'}
+          </p>
+
+          <div className="flex gap-6 mt-4 justify-center sm:justify-start text-sm">
+            <div className="text-center">
+              <p className="font-bold text-gray-900 text-lg">{obras.length}</p>
+              <p className="text-gray-500 text-xs uppercase tracking-wide">Obras</p>
+            </div>
+            <div className="w-px bg-gray-100" />
+            <div className="text-center">
+              <p className="font-bold text-gray-900 text-lg">{perfil.seguidores ?? 0}</p>
+              <p className="text-gray-500 text-xs uppercase tracking-wide">Seguidores</p>
+            </div>
+            <div className="w-px bg-gray-100" />
+            <div className="text-center">
+              <p className="font-bold text-gray-900 text-lg">{perfil.seguidos ?? 0}</p>
+              <p className="text-gray-500 text-xs uppercase tracking-wide">Siguiendo</p>
+            </div>
+          </div>
+        </div>
+
+        <button
           onClick={handleFollow}
-          className={`px-8 py-2 rounded-lg font-bold transition ${
-            siguiendo ? 'bg-gray-200 text-black hover:bg-gray-300' : 'bg-blue-600 text-white hover:bg-blue-700'
+          disabled={loadingFollow}
+          className={`px-6 py-2.5 rounded-xl font-semibold text-sm transition shrink-0 disabled:opacity-60 ${
+            siguiendo
+              ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+              : 'bg-black text-white hover:bg-gray-800'
           }`}
         >
-          {siguiendo ? 'Siguiendo' : 'Seguir'}
+          {loadingFollow ? '...' : siguiendo ? 'Siguiendo' : 'Seguir'}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {obras.map((obra) => (
-          <Link href={`/obras/${obra.id_obra}`} key={obra.id_obra} className="rounded-xl overflow-hidden border group">
-            <img src={obra.imagen} className="w-full h-64 object-cover group-hover:scale-105 transition" />
-          </Link>
-        ))}
-      </div>
+      {/* Galería de obras */}
+      {obras.length === 0 ? (
+        <div className="bg-white rounded-2xl border shadow-sm py-16 text-center text-gray-400">
+          <p className="text-4xl mb-3">🎨</p>
+          <p className="font-medium">Este artista aún no ha publicado obras</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
+          {obras.map((obra) => (
+            <Link
+              href={`/obras/${obra.id_obra}`}
+              key={obra.id_obra}
+              className="group relative rounded-xl overflow-hidden border bg-gray-100 aspect-square"
+            >
+              <img
+                src={getImageUrl(obra.imagen || obra.archivo)}
+                alt={obra.titulo}
+                className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition duration-300 flex items-end p-3">
+                <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition duration-300 truncate">
+                  {obra.titulo}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

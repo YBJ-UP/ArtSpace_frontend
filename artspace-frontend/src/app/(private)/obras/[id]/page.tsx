@@ -17,13 +17,10 @@ export default function DetalleObraPage() {
   useEffect(() => {
     const fetchDetalles = async () => {
       try {
-        // Obtenemos los detalles de la obra
+        // Obtenemos los detalles de la obra que ya incluyen los comentarios
         const resObra = await api.get(`/obras/${idObra}`);
         setObra(resObra.data);
-
-        // Obtenemos los comentarios de la obra
-        const resComentarios = await api.get(`/obras/${idObra}/comentarios`);
-        setComentarios(resComentarios.data);
+        setComentarios(resObra.data.comentarios || []);
       } catch (error) {
         console.error('Error al cargar la obra', error);
       } finally {
@@ -55,9 +52,9 @@ export default function DetalleObraPage() {
     try {
       await api.post(`/obras/${idObra}/comentarios`, { contenido: nuevoComentario });
       setNuevoComentario('');
-      // Recargar comentarios tras publicar
-      const resComentarios = await api.get(`/obras/${idObra}/comentarios`);
-      setComentarios(resComentarios.data);
+      // Recargar obra para obtener los nuevos comentarios
+      const resObra = await api.get(`/obras/${idObra}`);
+      setComentarios(resObra.data.comentarios || []);
     } catch (error) {
       console.error('Error al publicar comentario', error);
     }
@@ -66,13 +63,20 @@ export default function DetalleObraPage() {
   if (loading) return <div className="text-center py-10">Cargando obra...</div>;
   if (!obra) return <div className="text-center py-10">Obra no encontrada</div>;
 
+  const getImageUrl = (url: string) => {
+    if (!url) return 'https://via.placeholder.com/800x600?text=Sin+Imagen';
+    if (url.startsWith('http')) return url;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://artspacebackend-production.up.railway.app';
+    return `${baseUrl}${url.startsWith('/') ? url : '/' + url}`;
+  };
+
   return (
     <div className="max-w-4xl mx-auto py-8">
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         {/* Imagen en grande */}
         <div className="bg-gray-100 flex justify-center">
           <img 
-            src={obra.imagen} 
+            src={getImageUrl(obra.imagen || obra.archivo)} 
             alt={obra.titulo} 
             className="max-h-[70vh] object-contain w-full"
           />

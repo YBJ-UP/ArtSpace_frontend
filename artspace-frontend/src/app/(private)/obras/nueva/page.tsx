@@ -16,7 +16,7 @@ export default function NuevaObraPage() {
   const router = useRouter();
 
   useEffect(() => {
-    api.get('/admin/categorias').then((res) => {
+    api.get('/obras/categorias').then((res) => {
       setCategorias(res.data);
     }).catch(() => {});
   }, []);

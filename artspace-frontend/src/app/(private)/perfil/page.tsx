@@ -12,11 +12,16 @@ export default function MiPerfilPage() {
   useEffect(() => {
     const fetchDatos = async () => {
       try {
+        const userLocal = localStorage.getItem('user')
+        const userId = userLocal ? JSON.parse(userLocal).id_usuario : null
+
         const resPerfil = await api.get('/usuarios/me');
         setPerfil(resPerfil.data);
 
-        const resObras = await api.get(`/obras/usuario/${resPerfil.data.id_usuario}`);
-        setObras(resObras.data);
+        if (userId) {
+          const resObras = await api.get(`/obras/usuario/${userId}`);
+          setObras(resObras.data);
+        }
       } catch (error) {
         console.error('Error al cargar perfil', error);
       } finally {
@@ -26,8 +31,9 @@ export default function MiPerfilPage() {
     fetchDatos();
   }, []);
 
-  const getImageUrl = (url: string) => {
-    if (!url) return 'https://placehold.co/800x600?text=Sin+Imagen';
+  const getImageUrl = (obra: any) => {
+    const url = obra?.imagen || obra?.archivo || obra?.url_imagen || obra?.imagen_url;
+    if (!url) return 'https://placehold.co/400x400?text=Sin+Imagen';
     if (url.startsWith('http')) return url;
     const base = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://artspacebackend-production.up.railway.app';
     return `${base}${url.startsWith('/') ? url : '/' + url}`;

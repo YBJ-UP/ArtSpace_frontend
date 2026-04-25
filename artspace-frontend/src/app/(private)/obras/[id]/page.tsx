@@ -16,6 +16,9 @@ export default function DetalleObraPage() {
   const [loading, setLoading] = useState(true);
   const [comentando, setComentando] = useState(false);
   const [usuarioActual, setUsuarioActual] = useState<any>(null);
+  const [respondiendoA, setRespondiendoA] = useState<number | null>(null);
+  const [textoRespuesta, setTextoRespuesta] = useState('');
+  const [enviandoRespuesta, setEnviandoRespuesta] = useState(false);
 
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -84,6 +87,25 @@ export default function DetalleObraPage() {
       console.error('Error al eliminar comentario', error);
     }
   };
+
+  const handleResponder = async (idComentario: number) => {
+    if (!textoRespuesta.trim()) return;
+    setEnviandoRespuesta(true);
+    try {
+      await api.post(`/obras/${idObra}/comentarios/${idComentario}/respuestas`, { contenido: textoRespuesta });
+      setTextoRespuesta('');
+      setRespondiendoA(null);
+      const resObra = await api.get(`/obras/${idObra}`);
+      setComentarios(resObra.data.comentarios || []);
+    } catch (error) {
+      console.error('Error al responder comentario', error);
+    } finally {
+      setEnviandoRespuesta(false);
+    }
+  };
+
+  const esDelUsuario = (idUsuarioRecurso: any) =>
+    Number(usuarioActual?.id_usuario) === Number(idUsuarioRecurso);
 
   const getImageUrl = (url: string) => {
     if (!url) return 'https://placehold.co/800x600?text=Sin+Imagen';
@@ -210,37 +232,88 @@ export default function DetalleObraPage() {
             ) : (
               <div className="space-y-3">
                 {comentarios.map((comentario: any) => (
-                  <div
-                    key={comentario.id_comentario}
-                    className="group flex gap-3 bg-gray-50 hover:bg-gray-100 transition rounded-xl p-4"
-                  >
-                    <img
-                      src={comentario.autor_avatar || 'https://placehold.co/40x40?text=U'}
-                      alt={comentario.autor}
-                      className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="font-semibold text-sm text-gray-900">{comentario.autor}</span>
-                        <span className="text-xs text-gray-400 shrink-0">
-                          {new Date(comentario.fecha_comentario).toLocaleDateString('es-MX', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </span>
+                  <div key={comentario.id_comentario} className="bg-gray-50 rounded-xl p-4">
+                    {/* Comentario principal */}
+                    <div className="group flex gap-3">
+                      <img
+                        src={comentario.autor_avatar || 'https://placehold.co/40x40?text=U'}
+                        alt={comentario.autor}
+                        className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="font-semibold text-sm text-gray-900">{comentario.autor}</span>
+                          <span className="text-xs text-gray-400 shrink-0">
+                            {new Date(comentario.fecha).toLocaleDateString('es-MX', {
+                              day: 'numeric', month: 'short', year: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700 mt-0.5 leading-relaxed">{comentario.contenido}</p>
+                        <div className="flex gap-3 mt-2">
+                          <button
+                            onClick={() => {
+                              setRespondiendoA(respondiendoA === comentario.id_comentario ? null : comentario.id_comentario);
+                              setTextoRespuesta('');
+                            }}
+                            className="text-xs text-gray-400 hover:text-gray-700 transition"
+                          >
+                            Responder
+                          </button>
+                          {esDelUsuario(comentario.id_usuario) && (
+                            <button
+                              onClick={() => handleEliminarComentario(comentario.id_comentario)}
+                              className="text-xs text-gray-400 hover:text-rose-500 transition"
+                            >
+                              Eliminar
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-700 mt-0.5 leading-relaxed">{comentario.contenido}</p>
                     </div>
-                    {usuarioActual?.id_usuario === comentario.id_usuario && (
-                      <button
-                        onClick={() => handleEliminarComentario(comentario.id_comentario)}
-                        className="opacity-0 group-hover:opacity-100 transition text-gray-400 hover:text-rose-500 shrink-0 self-start mt-0.5 text-sm"
-                        title="Eliminar comentario"
-                      >
-                        🗑️
-                      </button>
+
+                    {/* Respuestas existentes */}
+                    {comentario.respuestas?.length > 0 && (
+                      <div className="ml-12 mt-3 space-y-3">
+                        {comentario.respuestas.map((respuesta: any) => (
+                          <div key={respuesta.id_respuesta} className="flex gap-2">
+                            <img
+                              src={respuesta.avatar || 'https://placehold.co/32x32?text=U'}
+                              alt={respuesta.autor}
+                              className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="font-semibold text-xs text-gray-900">{respuesta.autor} </span>
+                              <span className="text-xs text-gray-700">{respuesta.contenido}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
+
+                    {/* Input de respuesta */}
+                    {respondiendoA === comentario.id_comentario && (
+                      <div className="ml-12 mt-3 flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Escribe una respuesta..."
+                          className="flex-1 border border-gray-200 bg-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black transition"
+                          value={textoRespuesta}
+                          onChange={(e) => setTextoRespuesta(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleResponder(comentario.id_comentario)}
+                          autoFocus
+                          disabled={enviandoRespuesta}
+                        />
+                        <button
+                          onClick={() => handleResponder(comentario.id_comentario)}
+                          disabled={enviandoRespuesta || !textoRespuesta.trim()}
+                          className="bg-black text-white px-3 py-2 rounded-lg text-xs font-semibold hover:bg-gray-800 transition disabled:opacity-40"
+                        >
+                          {enviandoRespuesta ? '...' : 'Enviar'}
+                        </button>
+                      </div>
+                    )}
+
                   </div>
                 ))}
               </div>

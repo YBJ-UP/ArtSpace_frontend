@@ -38,12 +38,23 @@ export default function DetalleObraPage() {
   }, [idObra]);
 
   const handleLike = async () => {
+    const nuevoLiked = !liked;
+    const nuevoContador = (obra?.likes ?? 0) + (nuevoLiked ? 1 : -1);
+
+    // Optimistic update: actualiza UI antes de esperar al servidor
+    setLiked(nuevoLiked);
+    setObra((prev: any) => ({ ...prev, likes: Math.max(0, nuevoContador) }));
+
     try {
-      const res = await api.post(`/obras/${idObra}/likes`);
-      setLiked(!liked);
-      setObra((prev: any) => ({ ...prev, likes: res.data.likes_total ?? prev.likes }));
-    } catch (error) {
-      console.error('Error al dar like', error);
+      if (nuevoLiked) {
+        await api.post(`/obras/${idObra}/likes`);
+      } else {
+        await api.delete(`/obras/${idObra}/likes`);
+      }
+    } catch {
+      // Revertir si falla
+      setLiked(liked);
+      setObra((prev: any) => ({ ...prev, likes: obra?.likes }));
     }
   };
 

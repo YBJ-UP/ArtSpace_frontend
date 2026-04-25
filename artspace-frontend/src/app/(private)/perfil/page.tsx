@@ -7,13 +7,15 @@ import api from '@/services/api';
 export default function MiPerfilPage() {
   const [perfil, setPerfil] = useState<any>(null);
   const [obras, setObras] = useState<any[]>([]);
+  const [siguiendo, setSiguiendo] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<'obras' | 'siguiendo'>('obras');
 
   useEffect(() => {
     const fetchDatos = async () => {
       try {
-        const userLocal = localStorage.getItem('user')
-        const userId = userLocal ? JSON.parse(userLocal).id_usuario : null
+        const userLocal = localStorage.getItem('user');
+        const userId = userLocal ? JSON.parse(userLocal).id_usuario : null;
 
         const resPerfil = await api.get('/usuarios/me');
         setPerfil(resPerfil.data);
@@ -21,6 +23,15 @@ export default function MiPerfilPage() {
         if (userId) {
           const resObras = await api.get(`/obras/usuario/${userId}`);
           setObras(resObras.data);
+        }
+
+        if (userId) {
+          try {
+            const resSiguiendo = await api.get(`/usuarios/${userId}/siguiendo`);
+            setSiguiendo(Array.isArray(resSiguiendo.data) ? resSiguiendo.data : []);
+          } catch {
+            // si el endpoint falla no rompemos la página
+          }
         }
       } catch (error) {
         console.error('Error al cargar perfil', error);
@@ -34,6 +45,13 @@ export default function MiPerfilPage() {
   const getImageUrl = (obra: any) => {
     const url = obra?.imagen || obra?.archivo || obra?.url_imagen || obra?.imagen_url;
     if (!url) return 'https://placehold.co/400x400?text=Sin+Imagen';
+    if (url.startsWith('http')) return url;
+    const base = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://artspacebackend-production.up.railway.app';
+    return `${base}${url.startsWith('/') ? url : '/' + url}`;
+  };
+
+  const getAvatarUrl = (url: string) => {
+    if (!url) return 'https://placehold.co/80x80?text=U';
     if (url.startsWith('http')) return url;
     const base = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://artspacebackend-production.up.railway.app';
     return `${base}${url.startsWith('/') ? url : '/' + url}`;
@@ -97,20 +115,26 @@ export default function MiPerfilPage() {
           </p>
 
           <div className="flex gap-6 mt-4 justify-center sm:justify-start text-sm">
-            <div className="text-center">
+            <button
+              onClick={() => setTab('obras')}
+              className={`text-center transition ${tab === 'obras' ? '' : 'opacity-60 hover:opacity-100'}`}
+            >
               <p className="font-bold text-gray-900 text-lg">{obras.length}</p>
               <p className="text-gray-500 text-xs uppercase tracking-wide">Obras</p>
-            </div>
+            </button>
             <div className="w-px bg-gray-100" />
             <div className="text-center">
               <p className="font-bold text-gray-900 text-lg">{perfil.seguidores ?? 0}</p>
               <p className="text-gray-500 text-xs uppercase tracking-wide">Seguidores</p>
             </div>
             <div className="w-px bg-gray-100" />
-            <div className="text-center">
-              <p className="font-bold text-gray-900 text-lg">{perfil.seguidos ?? 0}</p>
+            <button
+              onClick={() => setTab('siguiendo')}
+              className={`text-center transition ${tab === 'siguiendo' ? '' : 'opacity-60 hover:opacity-100'}`}
+            >
+              <p className="font-bold text-gray-900 text-lg">{perfil.seguidos ?? siguiendo.length}</p>
               <p className="text-gray-500 text-xs uppercase tracking-wide">Siguiendo</p>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -130,44 +154,85 @@ export default function MiPerfilPage() {
         </div>
       </div>
 
-      {/* Galería de obras */}
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Mis obras</h2>
+      {/* Tabs */}
+      {tab === 'obras' ? (
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Mis obras</h2>
 
-        {obras.length === 0 ? (
-          <div className="bg-white rounded-2xl border shadow-sm py-16 text-center text-gray-400">
-            <p className="text-4xl mb-3">🎨</p>
-            <p className="font-medium mb-4">Aún no has publicado ninguna obra</p>
-            <Link
-              href="/obras/nueva"
-              className="inline-block bg-black text-white px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-800 transition"
-            >
-              Publicar primera obra
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
-            {obras.map((obra) => (
+          {obras.length === 0 ? (
+            <div className="bg-white rounded-2xl border shadow-sm py-16 text-center text-gray-400">
+              <p className="text-4xl mb-3">🎨</p>
+              <p className="font-medium mb-4">Aún no has publicado ninguna obra</p>
               <Link
-                href={`/obras/${obra.id_obra}`}
-                key={obra.id_obra}
-                className="group relative rounded-xl overflow-hidden border bg-gray-100 aspect-square"
+                href="/obras/nueva"
+                className="inline-block bg-black text-white px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-800 transition"
               >
-                <img
-                  src={getImageUrl(obra)}
-                  alt={obra.titulo}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition duration-300 flex items-end p-3">
-                  <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition duration-300 truncate">
-                    {obra.titulo}
-                  </p>
-                </div>
+                Publicar primera obra
               </Link>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
+              {obras.map((obra) => (
+                <Link
+                  href={`/obras/${obra.id_obra}`}
+                  key={obra.id_obra}
+                  className="group relative rounded-xl overflow-hidden border bg-gray-100 aspect-square"
+                >
+                  <img
+                    src={getImageUrl(obra)}
+                    alt={obra.titulo}
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition duration-300 flex items-end p-3">
+                    <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition duration-300 truncate">
+                      {obra.titulo}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Artistas que sigues</h2>
+
+          {siguiendo.length === 0 ? (
+            <div className="bg-white rounded-2xl border shadow-sm py-16 text-center text-gray-400">
+              <p className="text-4xl mb-3">👥</p>
+              <p className="font-medium mb-4">Aún no sigues a ningún artista</p>
+              <Link
+                href="/explorar"
+                className="inline-block bg-black text-white px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-800 transition"
+              >
+                Explorar artistas
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {siguiendo.map((usuario: any) => (
+                <Link
+                  href={`/usuario/${usuario.id_usuario}`}
+                  key={usuario.id_usuario}
+                  className="bg-white rounded-2xl border shadow-sm p-4 flex flex-col items-center gap-2 hover:shadow-md transition text-center"
+                >
+                  <img
+                    src={getAvatarUrl(usuario.avatar)}
+                    alt={usuario.nombre}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-100"
+                  />
+                  <p className="font-semibold text-sm text-gray-900 truncate w-full text-center">
+                    {usuario.nombre}
+                  </p>
+                  {usuario.biografia && (
+                    <p className="text-xs text-gray-500 line-clamp-2">{usuario.biografia}</p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -12,9 +12,14 @@ export default function PerfilUsuarioPage() {
   const [siguiendo, setSiguiendo] = useState(false);
   const [loadingFollow, setLoadingFollow] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [esMiPerfil, setEsMiPerfil] = useState(false);
 
   const fetchDatos = async () => {
     try {
+      const userLocal = localStorage.getItem('user');
+      const miId = userLocal ? JSON.parse(userLocal).id_usuario : null;
+      setEsMiPerfil(String(miId) === String(id));
+
       const [resPerfil, resObras] = await Promise.all([
         api.get(`/usuarios/${id}`),
         api.get(`/obras/usuario/${id}`),
@@ -50,8 +55,9 @@ export default function PerfilUsuarioPage() {
     }
   };
 
-  const getImageUrl = (url: string) => {
-    if (!url) return 'https://placehold.co/800x600?text=Sin+Imagen';
+  const getImageUrl = (obra: any) => {
+    const url = obra?.imagen || obra?.archivo || obra?.url_imagen || obra?.imagen_url;
+    if (!url) return 'https://placehold.co/400x400?text=Sin+Imagen';
     if (url.startsWith('http')) return url;
     const base = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://artspacebackend-production.up.railway.app';
     return `${base}${url.startsWith('/') ? url : '/' + url}`;
@@ -123,17 +129,26 @@ export default function PerfilUsuarioPage() {
           </div>
         </div>
 
-        <button
-          onClick={handleFollow}
-          disabled={loadingFollow}
-          className={`px-6 py-2.5 rounded-xl font-semibold text-sm transition shrink-0 disabled:opacity-60 ${
-            siguiendo
-              ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-              : 'bg-black text-white hover:bg-gray-800'
-          }`}
-        >
-          {loadingFollow ? '...' : siguiendo ? 'Siguiendo' : 'Seguir'}
-        </button>
+        {esMiPerfil ? (
+          <Link
+            href="/perfil/editar"
+            className="px-6 py-2.5 rounded-xl font-semibold text-sm border border-gray-200 text-gray-700 hover:bg-gray-50 transition shrink-0"
+          >
+            Editar perfil
+          </Link>
+        ) : (
+          <button
+            onClick={handleFollow}
+            disabled={loadingFollow}
+            className={`px-6 py-2.5 rounded-xl font-semibold text-sm transition shrink-0 disabled:opacity-60 ${
+              siguiendo
+                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                : 'bg-black text-white hover:bg-gray-800'
+            }`}
+          >
+            {loadingFollow ? '...' : siguiendo ? 'Siguiendo ✓' : 'Seguir'}
+          </button>
+        )}
       </div>
 
       {/* Galería de obras */}
@@ -151,7 +166,7 @@ export default function PerfilUsuarioPage() {
               className="group relative rounded-xl overflow-hidden border bg-gray-100 aspect-square"
             >
               <img
-                src={getImageUrl(obra.imagen || obra.archivo)}
+                src={getImageUrl(obra)}
                 alt={obra.titulo}
                 className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
               />

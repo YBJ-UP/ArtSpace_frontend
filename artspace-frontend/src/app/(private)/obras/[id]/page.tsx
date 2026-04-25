@@ -28,6 +28,7 @@ export default function DetalleObraPage() {
         const resObra = await api.get(`/obras/${idObra}`);
         setObra(resObra.data);
         setComentarios(resObra.data.comentarios || []);
+        setLiked(resObra.data.usuario_ya_dio_like ?? false);
       } catch (error) {
         console.error('Error al cargar la obra', error);
       } finally {

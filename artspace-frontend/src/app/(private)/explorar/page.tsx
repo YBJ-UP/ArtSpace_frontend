@@ -33,7 +33,7 @@ export default function ExplorarPage() {
       const res = await api.get('/obras', {
         params: {
           busqueda: nuevaBusqueda || undefined,
-          categoria: nuevaCategoria || undefined,
+          subcategoria: nuevaCategoria || undefined,
           page: nuevaPagina,
           limit: PAGE_SIZE,
         },
@@ -80,10 +80,10 @@ export default function ExplorarPage() {
     return `${base}${url.startsWith('/') ? url : '/' + url}`;
   };
 
-  // Aplanar subcategorías para el selector
+  // Aplanar subcategorías para el selector (el backend filtra por nombre, no por ID)
   const opcionesCategorias = categorias.flatMap((cat) =>
     (cat.subcategorias ?? []).map((sub: any) => ({
-      value: String(sub.id_subcategoria),
+      value: sub.nombre,
       label: `${cat.nombre} — ${sub.nombre}`,
     }))
   );

@@ -235,14 +235,16 @@ export default function DetalleObraPage() {
                   <div key={comentario.id_comentario} className="bg-gray-50 rounded-xl p-4">
                     {/* Comentario principal */}
                     <div className="group flex gap-3">
-                      <img
-                        src={comentario.autor_avatar || 'https://placehold.co/40x40?text=U'}
-                        alt={comentario.autor}
-                        className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
-                      />
+                      <Link href={`/usuario/${comentario.id_usuario}`}>
+                        <img
+                          src={comentario.autor_avatar || 'https://placehold.co/40x40?text=U'}
+                          alt={comentario.autor}
+                          className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5 hover:opacity-80 transition"
+                        />
+                      </Link>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline justify-between gap-2">
-                          <span className="font-semibold text-sm text-gray-900">{comentario.autor}</span>
+                          <Link href={`/usuario/${comentario.id_usuario}`} className="font-semibold text-sm text-gray-900 hover:underline">{comentario.autor}</Link>
                           <span className="text-xs text-gray-400 shrink-0">
                             {new Date(comentario.fecha).toLocaleDateString('es-MX', {
                               day: 'numeric', month: 'short', year: 'numeric',
@@ -277,13 +279,15 @@ export default function DetalleObraPage() {
                       <div className="ml-12 mt-3 space-y-3">
                         {comentario.respuestas.map((respuesta: any) => (
                           <div key={respuesta.id_respuesta} className="flex gap-2">
-                            <img
-                              src={respuesta.avatar || 'https://placehold.co/32x32?text=U'}
-                              alt={respuesta.autor}
-                              className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5"
-                            />
+                            <Link href={`/usuario/${respuesta.id_usuario}`}>
+                              <img
+                                src={respuesta.avatar || 'https://placehold.co/32x32?text=U'}
+                                alt={respuesta.autor}
+                                className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5 hover:opacity-80 transition"
+                              />
+                            </Link>
                             <div className="flex-1 min-w-0">
-                              <span className="font-semibold text-xs text-gray-900">{respuesta.autor} </span>
+                              <Link href={`/usuario/${respuesta.id_usuario}`} className="font-semibold text-xs text-gray-900 hover:underline">{respuesta.autor} </Link>
                               <span className="text-xs text-gray-700">{respuesta.contenido}</span>
                             </div>
                           </div>

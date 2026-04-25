@@ -154,7 +154,7 @@ export default function MiPerfilPage() {
                 className="group relative rounded-xl overflow-hidden border bg-gray-100 aspect-square"
               >
                 <img
-                  src={getImageUrl(obra.imagen || obra.archivo)}
+                  src={getImageUrl(obra)}
                   alt={obra.titulo}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                 />

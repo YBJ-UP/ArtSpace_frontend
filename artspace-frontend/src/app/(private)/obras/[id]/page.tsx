@@ -43,7 +43,7 @@ export default function DetalleObraPage() {
 
   const handleLike = async () => {
     const nuevoLiked = !liked;
-    const nuevoContador = (obra?.likes ?? 0) + (nuevoLiked ? 1 : -1);
+    const nuevoContador = (Number(obra?.likes) ?? 0) + (nuevoLiked ? 1 : -1);
 
     // Optimistic update: actualiza UI antes de esperar al servidor
     setLiked(nuevoLiked);
@@ -81,7 +81,7 @@ export default function DetalleObraPage() {
   const handleEliminarComentario = async (idComentario: number) => {
     if (!confirm('¿Eliminar este comentario?')) return;
     try {
-      await api.delete(`/comentarios/${idComentario}`);
+      await api.delete(`/obras/${idObra}/comentarios/${idComentario}`);
       setComentarios((prev) => prev.filter((c) => c.id_comentario !== idComentario));
     } catch (error) {
       console.error('Error al eliminar comentario', error);
@@ -186,7 +186,7 @@ export default function DetalleObraPage() {
                 }`}
               >
                 {liked ? '❤️' : '🤍'}
-                <span>{obra.likes}</span>
+                <span>{Number(obra.likes)}</span>
               </button>
             </div>
           </div>

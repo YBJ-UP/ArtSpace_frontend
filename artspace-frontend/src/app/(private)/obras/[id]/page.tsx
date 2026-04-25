@@ -29,9 +29,10 @@ export default function DetalleObraPage() {
     const fetchDetalles = async () => {
       try {
         const resObra = await api.get(`/obras/${idObra}`);
-        setObra(resObra.data);
-        setComentarios(resObra.data.comentarios || []);
-        setLiked(resObra.data.usuario_ya_dio_like ?? false);
+        const data = resObra.data;
+        setObra({ ...data, likes: data.likes_total ?? data.likes ?? 0 });
+        setComentarios(data.comentarios || []);
+        setLiked(data.usuario_ya_dio_like ?? false);
       } catch (error) {
         console.error('Error al cargar la obra', error);
       } finally {

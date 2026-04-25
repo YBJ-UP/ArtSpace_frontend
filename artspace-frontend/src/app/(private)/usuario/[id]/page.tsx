@@ -40,10 +40,10 @@ export default function PerfilUsuarioPage() {
     setLoadingFollow(true);
     try {
       if (siguiendo) {
-        await api.delete(`/seguidores/${id}/seguir`);
+        await api.delete(`/usuarios/${id}/seguir`);
         setSiguiendo(false);
       } else {
-        await api.post(`/seguidores/${id}/seguir`);
+        await api.post(`/usuarios/${id}/seguir`);
         setSiguiendo(true);
       }
       const res = await api.get(`/usuarios/${id}`);
